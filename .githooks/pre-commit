@@ -1,0 +1,64 @@
+#!/bin/sh
+
+# 1. Detect the Operating System
+OS_NAME=$(uname -s)
+case "$OS_NAME" in
+    Linux*) OS=linux;;
+    Darwin*) OS=darwin;; # macOS
+    MINGW*|MSYS*|CYGWIN*) OS=windows;; # Windows (Git Bash, CMD, PowerShell)
+    *) echo "⚠️ Unsupported OS: $OS_NAME"; exit 0;;
+esac
+
+# 2. Detect the Architecture (Intel vs Apple Silicon/ARM)
+ARCH_NAME=$(uname -m)
+case "$ARCH_NAME" in
+    x86_64) ARCH=x64;;
+    arm64|aarch64) ARCH=arm64;;
+    *) ARCH=x64;;
+esac
+
+# 3. Setup Variables
+VERSION="8.18.4"
+BIN_DIR=".bin"
+mkdir -p "$BIN_DIR"
+
+# Windows uses .exe and .zip; Mac/Linux use no extension and .tar.gz
+if [ "$OS" = "windows" ]; then
+    BIN_FILE="$BIN_DIR/gitleaks.exe"
+    EXT="zip"
+else
+    BIN_FILE="$BIN_DIR/gitleaks"
+    EXT="tar.gz"
+fi
+
+# 4. Download the correct binary if it doesn't exist
+if [ ! -f "$BIN_FILE" ]; then
+    echo "🔍 Downloading Gitleaks v$VERSION for $OS ($ARCH)..."
+    URL="https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_${OS}_${ARCH}.${EXT}"
+
+    if [ "$EXT" = "zip" ]; then
+        # Windows extraction
+        curl -sSfL "$URL" -o "$BIN_DIR/gitleaks.zip"
+        unzip -q "$BIN_DIR/gitleaks.zip" -d "$BIN_DIR"
+        rm "$BIN_DIR/gitleaks.zip"
+    else
+        # Mac/Linux extraction
+        curl -sSfL "$URL" | tar -xz -C "$BIN_DIR" gitleaks
+        chmod +x "$BIN_FILE"
+    fi
+    echo "✅ Download complete."
+fi
+
+# 5. Run the Scan
+echo "🕵️ Scanning staged files for secrets..."
+"$BIN_FILE" protect --staged -v
+
+# 6. Block commit if secrets are found
+if [ $? -ne 0 ]; then
+    echo "🚨 COMMIT BLOCKED: Secrets detected!"
+    echo "Remove the secret and try again. (Use --no-verify to bypass if it's a false positive)."
+    exit 1
+fi
+
+echo "✅ No secrets found. Committing..."
+exit 0

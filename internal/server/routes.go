@@ -12,8 +12,9 @@ func (s *FiberServer) RegisterFiberRoutes() {
 }
 
 func (s *FiberServer) HelloWorldHandler(c *fiber.Ctx) error {
+	key := "Jiraphat2545"
 	resp := fiber.Map{
-		"message": "Hello World",
+		"message": key,
 	}
 
 	return c.JSON(resp)
