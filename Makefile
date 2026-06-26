@@ -46,4 +46,10 @@ watch:
 	}"
 
 
-.PHONY: all build run test clean watch docker-run docker-down itest
+# Install Git hooks (pre-commit secret scan via Gitleaks)
+install-hooks:
+	@cp .githooks/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "✅ Git hooks installed. (pre-commit → Gitleaks secret scan)"
+
+.PHONY: all build run test clean watch docker-run docker-down itest install-hooks
